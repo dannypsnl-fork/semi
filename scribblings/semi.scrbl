@@ -1,10 +1,10 @@
 #lang scribble/manual
-@require[@for-label[racket-project
+@require[@for-label[semi
                     racket/base]]
 
-@title{racket-project}
+@title{semi}
 @author{Lîm Tsú-thuàn}
 
-@defmodule[racket-project]
+@defmodule[semi]
 
 Package Description Here
