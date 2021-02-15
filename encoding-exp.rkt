@@ -3,7 +3,8 @@
 (require syntax/parse/define)
 
 (begin-for-syntax
-  (require racket/string)
+  (require racket/string
+           racket/match)
 
   (struct tt (val typ)
     #:methods gen:custom-write
@@ -16,24 +17,24 @@
          (string-prefix? (symbol->string sym) "?")))
 
   (define (typeof t)
-    (syntax-property t 'type))
+    (match t
+      ['Type 'Type1]
+      [(? tt?) (tt-typ t)]
+      [_ (error 'unknown "what? `~a`" t)]))
 
   (define (unify t1 t2 stx)
     (unless (equal? t1 t2)
       (raise-syntax-error
-       'type-eq
-       (format "mismatching ~a ~a" t1 t2)
+       'type-mismatching
+       (format "expected: `~a`, but got: `~a`" t1 t2)
        stx))))
 
 (define-for-syntax Nat (tt 'Nat 'Type))
-(define-syntax zero
-  (syntax-property #''zero 'type Nat))
+(define-for-syntax zero (tt 'zero Nat))
+(define zero 'zero)
 (define-for-syntax (suc n)
-  (unify Nat (typeof n)
-         ; FIXME: n is not syntax
-         ; cannot reference to target syntax for reporting
-         n)
-  (syntax-property #'`(suc ,n) 'type Nat))
+  (unify Nat (typeof n) n)
+  (tt `(suc ,n) Nat))
 (define (suc n)
   `(suc ,n))
 
@@ -48,13 +49,17 @@
   #:datum-literals (:)
   [(_ name:id : ty exp:expr)
    (define unified-ty
-     (unify (eval #'ty) (typeof #'exp)
+     (unify (eval #'ty) (typeof (eval #'exp))
             #'name))
    #`(begin
-       (define-syntax name
-         (syntax-property exp 'type #,unified-ty)))])
+       (define-for-syntax name (tt exp #,unified-ty))
+       (define name exp))])
 
-#;(define- a : Nat zero
-  #;(suc (suc zero)))
-(begin-for-syntax
-  (displayln zero))
+zero
+(define- a : Nat
+  (suc (suc zero)))
+a
+
+; error case: `true` is not `Nat`, however, this experiment shows this approach cannot provide where error occurred. Thus, the experiment was failed. 
+#;(define- b : Nat
+  (suc true))
