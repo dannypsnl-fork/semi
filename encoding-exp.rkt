@@ -1,6 +1,7 @@
 #lang racket
 
-(require syntax/parse/define)
+(require syntax/parse/define
+         (for-syntax "core.rkt"))
 
 (begin-for-syntax
   (require racket/string
@@ -20,20 +21,14 @@
     (match t
       ['Type 'Type1]
       [(? tt?) (tt-typ t)]
-      [_ (error 'unknown "what? `~a`" t)]))
-
-  (define (unify t1 t2 stx)
-    (unless (equal? t1 t2)
-      (raise-syntax-error
-       'type-mismatching
-       (format "expected: `~a`, but got: `~a`" t1 t2)
-       stx))))
+      [_ (error 'unknown "what? `~a`" t)])))
 
 (define-for-syntax Nat (tt 'Nat 'Type))
 (define-for-syntax zero (tt 'zero Nat))
 (define zero 'zero)
 (define-for-syntax (suc n)
-  (unify Nat (typeof n) n)
+  (unify Nat (typeof n)
+         n n)
   (tt `(suc ,n) Nat))
 (define (suc n)
   `(suc ,n))
@@ -50,6 +45,7 @@
   [(_ name:id : ty exp:expr)
    (define unified-ty
      (unify (eval #'ty) (typeof (eval #'exp))
+            this-syntax
             #'name))
    #`(begin
        (define-for-syntax name (tt exp #,unified-ty))
