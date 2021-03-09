@@ -1,24 +1,40 @@
 #lang racket
 
-(module+ main
-  (require racket/cmdline)
+(require (for-syntax syntax/parse
+                     "core.rkt"))
 
-  (define who (make-parameter "world"))
-  (command-line
-    #:program "semi"
-    #:once-each
-    [("-n" "--name") name "Who to say hello to" (who name)]
-    #:args ()
-    (printf "hello ~a~n" (who))))
+(begin-for-syntax
+  (define (typeof stx)
+    (eval (syntax-property stx 'type)))
 
-(module+ test
-  (require rackunit)
+  (define U (syntax-property #''U
+                             'type
+                             'U))
 
-  (define expected 1)
-  (define actual 1)
+  (define Nat (syntax-property #''Nat
+                               'type
+                               U))
 
-  (test-case
-    "Example Test"
-    (check-equal? actual expected ))
+  (define zero (syntax-property #''zero
+                                'type
+                                Nat))
 
-  (test-equal? "Shortcut Equal Test" actual expected))
+  (define (suc n) (syntax-property #`'(suc #,n)
+                                   'type
+                                   Nat)))
+
+(define-syntax (zero stx)
+  (syntax-parse stx
+    [x zero]))
+
+zero
+
+(define-syntax (suc stx)
+  (syntax-parse stx
+    [(_ n)
+     (define new-n (local-expand #'n 'expression null))
+     (unify (eval Nat) (typeof new-n)
+            stx #'n)
+     (suc (eval new-n))]))
+
+(suc zero)
