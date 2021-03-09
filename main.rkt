@@ -1,21 +1,27 @@
 #lang racket
 
-(require (for-syntax "core.rkt")
+(require (for-syntax "core.rkt"
+                     "subst.rkt")
          syntax/parse/define)
 
 (begin-for-syntax
-  (define (typeof stx)
-    (eval (syntax-property stx 'type)))
+  (define (typeof e)
+    (cond
+      [(freevar? e)
+       (eval (freevar-typ e))]
+      [(syntax? e)
+       (eval (syntax-property e 'type))]
+      [else
+       (error 'unknown "~a" e)]))
 
-  (define U (syntax-property #''U
-                             'type 'U))
+  (define Type 'Type)
 
   (define-syntax-class data-clause
     #:datum-literals (:)
     (pattern (name:id : typ)
              #:attr def-for-syn
              #'(define-for-syntax name (syntax-property #''name
-                                                        'type typ))
+                                                        'type (eval typ)))
              #:attr def-syn
              #'(define-syntax (name stx)
                  (syntax-parse stx
@@ -24,7 +30,7 @@
     (pattern (name:id [p*:id : p-ty*] ... : typ)
              #:attr def-for-syn
              #'(define-for-syntax (name p* ...) (syntax-property #`'(name #,p* ...)
-                                                                 'type typ))
+                                                                 'type (eval typ)))
              #:attr def-syn
              (with-syntax ([(new-p* ...) (generate-temporaries #'(p* ...))])
                #'(define-syntax (name stx)
@@ -33,9 +39,10 @@
                       (let ([new-p* (local-expand #'p* 'expression null)]
                             ...)
                         (define subst (make-subst))
-                        (unify (eval p-ty*) (typeof new-p*)
+                        (unify (eval p-ty*) (eval (typeof new-p*))
                                stx #'p*
-                               #:subst subst)
+                               #:subst subst
+                               #:solve? #f)
                         ...
                         (name (eval new-p*) ...))]))))))
 
@@ -43,8 +50,7 @@
   [(_ name:id
       c*:data-clause ...)
    #'(begin
-       (define-for-syntax name (syntax-property #''name
-                                                'type U))
+       (define-for-syntax name 'name)
        (define-syntax (name stx)
          (syntax-parse stx
            [x name]))
@@ -54,17 +60,11 @@
   [(_ (name:id [d*:id : d-ty*] ...)
       c*:data-clause ...)
    #'(begin
-       (define-for-syntax d* (syntax-property #''?freevar
+       (define-for-syntax d* (syntax-property #`#,(freevar 'd* (eval d-ty*))
                                               'type d-ty*))
        ...
        (define-for-syntax (name d* ...)
-         (define subst (make-subst))
-         (unify (eval d-ty*) (typeof d*)
-                #'this-syntax #'c*
-                #:subst subst)
-         ...
-         (syntax-property #`'(name d* ...)
-                          'type U))
+         (list 'name d* ...))
        c*.def-for-syn ...
        c*.def-syn ...)])
 
@@ -77,14 +77,11 @@
 (data Nat
       [zero : Nat]
       [suc [n : Nat] : Nat])
-(data (Vec [A : U] [len : Nat])
+(data (Vec [A : Type] [len : Nat])
       [vecnil : (Vec A zero)]
       [vec:: [a : A] [l : (Vec A len)] : (Vec A (suc len))])
 
-true
-false
-zero
-(suc (suc zero))
+(suc (suc (suc zero)))
 vecnil
 (vec:: zero vecnil)
 (vec:: true (vec:: zero vecnil))

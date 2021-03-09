@@ -1,9 +1,7 @@
 #lang racket/base
 
 (provide unify
-         replace-occur
-         make-subst
-         subst-resolve)
+         replace-occur)
 
 (require racket/match
          "subst.rkt")

@@ -46,7 +46,12 @@
                #:combine/key (λ (k a b) a))
   resolved-map)
 
-(provide freevar?)
-(define (freevar? n)
-  (and (symbol? n)
-       (string-prefix? (symbol->string n) "?")))
+(provide (struct-out freevar))
+(struct freevar
+  (val typ)
+  #:methods gen:custom-write
+  [(define (write-proc freevar port mode)
+     (fprintf port "(?~a : ~a)"
+              (freevar-val freevar)
+              (freevar-typ freevar)))]
+  #:transparent)
