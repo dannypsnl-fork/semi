@@ -54,11 +54,17 @@
   [(_ (name:id [d*:id : d-ty*] ...)
       c*:data-clause ...)
    #'(begin
-       (define-for-syntax (name d* ...) (syntax-property #`'(name d* ...)
-                                                         'type U))
-       (define-for-syntax d* (syntax-property #''?d*
+       (define-for-syntax d* (syntax-property #''?freevar
                                               'type d-ty*))
        ...
+       (define-for-syntax (name d* ...)
+         (define subst (make-subst))
+         (unify (eval d-ty*) (typeof d*)
+                #'this-syntax #'c*
+                #:subst subst)
+         ...
+         (syntax-property #`'(name d* ...)
+                          'type U))
        c*.def-for-syn ...
        c*.def-syn ...)])
 
@@ -71,13 +77,14 @@
 (data Nat
       [zero : Nat]
       [suc [n : Nat] : Nat])
-(data (List [A : U])
-      [nil : (List A)]
-      [:: [a : A] [l : (List A)] : (List A)])
+(data (Vec [A : U] [len : Nat])
+      [vecnil : (Vec A zero)]
+      [vec:: [a : A] [l : (Vec A len)] : (Vec A (suc len))])
 
 true
 false
 zero
 (suc (suc zero))
-(:: (suc zero) (:: zero nil))
-(:: zero (:: false nil))
+vecnil
+(vec:: zero vecnil)
+(vec:: true (vec:: zero vecnil))
