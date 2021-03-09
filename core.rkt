@@ -5,8 +5,7 @@
          make-subst
          subst-resolve)
 
-(require racket/syntax
-         racket/match
+(require racket/match
          "subst.rkt")
 
 (define (unify exp act
