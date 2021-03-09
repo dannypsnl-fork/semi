@@ -1,32 +1,62 @@
 #lang racket
 
-(require (for-syntax syntax/parse
-                     "core.rkt"))
+(require (for-syntax "core.rkt")
+         syntax/parse/define)
 
 (begin-for-syntax
   (define (typeof stx)
     (eval (syntax-property stx 'type)))
 
   (define U (syntax-property #''U
-                             'type
-                             'U)))
+                             'type 'U))
 
-(define-for-syntax Nat (syntax-property #''Nat
-                                        'type U))
-(define-for-syntax zero (syntax-property #''zero
-                                         'type Nat))
-(define-syntax (zero stx)
-  (syntax-parse stx
-    [x zero]))
-(define-for-syntax (suc n) (syntax-property #`'(suc #,n)
-                                            'type Nat))
-(define-syntax (suc stx)
-  (syntax-parse stx
-    [(_ n)
-     (let ([new-n (local-expand #'n 'expression null)])
-       (unify (eval Nat) (typeof new-n)
-              stx #'n)
-       (suc (eval new-n)))]))
+  (define-syntax-class data-clause
+    #:datum-literals (:)
+    (pattern (name:id : typ)
+             #:attr def-for-syn
+             #'(define-for-syntax name (syntax-property #''name
+                                                        'type typ))
+             #:attr def-syn
+             #'(define-syntax (name stx)
+                 (syntax-parse stx
+                   [x name])))
+
+    (pattern (name:id [p*:id : p-ty*] ... : typ)
+             #:attr def-for-syn
+             #'(define-for-syntax (name p* ...) (syntax-property #`'(name #,p* ...)
+                                                                 'type typ))
+             #:attr def-syn
+             #'(define-syntax (name stx)
+                 (syntax-parse stx
+                   [(_ p* ...)
+                    (with-syntax ([new-p* (generate-temporaries #'(p* ...))])
+                      (let ([new-p* (local-expand #'p* 'expression null)]
+                            ...)
+                        (unify (eval p-ty*) (typeof new-p*)
+                               stx #'p*)
+                        ...
+                        (name (eval new-p*))))])))))
+
+(define-syntax-parser data
+  [(_ name:id
+      c*:data-clause ...)
+   #'(begin
+       (define-for-syntax name (syntax-property #''name
+                                                'type U))
+       c*.def-for-syn ...
+       c*.def-syn ...
+       )])
+
+(data Bool
+      [true : Bool]
+      [false : Bool])
+
+true
+false
+
+(data Nat
+      [zero : Nat]
+      [suc [n : Nat] : Nat])
 
 zero
-(suc zero)
+(suc (suc zero))
