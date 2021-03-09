@@ -47,16 +47,17 @@
        c*.def-syn ...
        )])
 
+(data Zero)
+(data One
+      [one : One])
 (data Bool
       [true : Bool]
       [false : Bool])
-
-true
-false
-
 (data Nat
       [zero : Nat]
       [suc [n : Nat] : Nat])
 
+true
+false
 zero
 (suc (suc zero))
