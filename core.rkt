@@ -9,12 +9,6 @@
          racket/match
          "subst.rkt")
 
-(define (full-expand exp occurs)
-  (match exp
-    [`(,e* ...)
-     (map (λ (e) (full-expand e occurs)) e*)]
-    [v (let ([new-v (hash-ref occurs v #f)])
-         (if new-v (full-expand new-v occurs) v))]))
 (define (unify exp act
                stx precise-stx
                #:subst [subst (make-subst)]
@@ -41,6 +35,14 @@
   (if solve?
       (full-expand exp (subst-resolve subst stx))
       exp))
+
+(define (full-expand exp occurs)
+  (match exp
+    [`(,e* ...)
+     (map (λ (e) (full-expand e occurs)) e*)]
+    [v (let ([new-v (hash-ref occurs v #f)])
+         (if new-v (full-expand new-v occurs) v))]))
+
 (define (replace-occur target #:occur occurs)
   (match target
     [`(,e* ...)
