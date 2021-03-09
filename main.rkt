@@ -32,8 +32,10 @@
                      [(_ p* ...)
                       (let ([new-p* (local-expand #'p* 'expression null)]
                             ...)
+                        (define subst (make-subst))
                         (unify (eval p-ty*) (typeof new-p*)
-                               stx #'p*)
+                               stx #'p*
+                               #:subst subst)
                         ...
                         (name (eval new-p*) ...))]))))))
 
@@ -43,6 +45,9 @@
    #'(begin
        (define-for-syntax name (syntax-property #''name
                                                 'type U))
+       (define-syntax (name stx)
+         (syntax-parse stx
+           [x name]))
        c*.def-for-syn ...
        c*.def-syn ...
        )]
@@ -74,4 +79,5 @@ true
 false
 zero
 (suc (suc zero))
-(:: zero (:: zero nil))
+(:: (suc zero) (:: zero nil))
+(:: zero (:: false nil))
